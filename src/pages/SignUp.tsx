@@ -3,32 +3,25 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../store/AppContext';
 import { Package, Zap, BarChart3, ShieldCheck } from 'lucide-react';
 
-const DEMO_EMAIL = 'admin@demo.com';
-const DEMO_PASSWORD = 'demo1234';
-
-export default function Login() {
+export default function SignUp() {
   const { dispatch } = useApp();
   const navigate = useNavigate();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
 
-  function handleLogin() {
-    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-      dispatch({
-        type: 'LOGIN',
-        payload: { id: 'u-1', email, name: 'Admin User', role: 'admin' },
-      });
-      navigate('/dashboard');
-    } else {
-      setError('Invalid email or password.');
-    }
-  }
+  function handleSignUp() {
+    if (!name.trim()) return setError('Name is required.');
+    if (!email.trim()) return setError('Email is required.');
+    if (password.length < 6) return setError('Password must be at least 6 characters.');
+    if (password !== confirm) return setError('Passwords do not match.');
 
-  function demoLogin() {
+    // For the demo app, create a new user session immediately
     dispatch({
       type: 'LOGIN',
-      payload: { id: 'u-1', email: DEMO_EMAIL, name: 'Admin User', role: 'admin' },
+      payload: { id: `u-${Date.now()}`, email, name: name.trim(), role: 'manager' },
     });
     navigate('/dashboard');
   }
@@ -46,10 +39,21 @@ export default function Login() {
             <span className="font-bold text-gray-900 text-lg">SmartInventory</span>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h2>
-          <p className="text-gray-500 text-sm mb-7">Sign in to your account to continue</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">Create an account</h2>
+          <p className="text-gray-500 text-sm mb-7">Get started with SmartInventory today</p>
 
-          <form onSubmit={e => { e.preventDefault(); handleLogin(); }} className="space-y-4">
+          <form onSubmit={e => { e.preventDefault(); handleSignUp(); }} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="John Smith"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
@@ -69,6 +73,17 @@ export default function Login() {
                 onChange={e => setPassword(e.target.value)}
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Min. 6 characters"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+              <input
+                type="password"
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="••••••••"
               />
             </div>
@@ -83,34 +98,14 @@ export default function Login() {
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
             >
-              Sign In
+              Create Account
             </button>
           </form>
 
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-3 text-xs text-gray-400">or</span>
-            </div>
-          </div>
-
-          <button
-            onClick={demoLogin}
-            className="w-full border-2 border-blue-600 text-blue-700 font-semibold py-2.5 rounded-lg hover:bg-blue-50 transition-colors text-sm"
-          >
-            Demo Login
-          </button>
-
-          <p className="text-center text-xs text-gray-400 mt-3">
-            Demo: {DEMO_EMAIL} / {DEMO_PASSWORD}
-          </p>
-
           <p className="text-center text-sm text-gray-500 mt-6">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-blue-600 font-medium hover:underline">
-              Sign up
+            Already have an account?{' '}
+            <Link to="/login" className="text-blue-600 font-medium hover:underline">
+              Sign in
             </Link>
           </p>
         </div>
