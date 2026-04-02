@@ -3,7 +3,7 @@ import { getToken } from './index';
 
 // Create axios instance with base URL
 const apiClient: AxiosInstance = axios.create({
-  baseURL: import.meta.env.SERVER_BASE_URL || 'http://localhost:8080',
+  baseURL: import.meta.env.SERVER_BASE_URL || 'http://localhost:8000',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
