@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Package, ShoppingCart, AlertTriangle,
   ClipboardList, LogOut, Menu, X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { restockApi } from '../api';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -15,14 +16,22 @@ const navItems = [
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, logout } = useApp();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const lowStockCount = state.restockQueue.length;
+  // Fetch restock count for the sidebar badge
+  useEffect(() => {
+    if (!state.user) return;
+    restockApi.list()
+      .then(items => dispatch({ type: 'SET_RESTOCK_COUNT', payload: items.length }))
+      .catch(() => {});
+  }, [state.user, dispatch]);
 
-  function logout() {
-    dispatch({ type: 'LOGOUT' });
+  const lowStockCount = state.restockCount;
+
+  function handleLogout() {
+    logout();
     navigate('/login');
   }
 
@@ -72,7 +81,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         <div className="p-3 border-t border-gray-100">
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 w-full transition-colors"
           >
             <LogOut size={18} />

@@ -11,12 +11,28 @@ import ActivityLog from './pages/ActivityLog';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { state } = useApp();
+  if (state.isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
   if (!state.user) return <Navigate to="/login" replace />;
   return <Layout>{children}</Layout>;
 }
 
 function AppRoutes() {
   const { state } = useApp();
+
+  if (state.isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <Routes>
       <Route
