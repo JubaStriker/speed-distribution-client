@@ -4,6 +4,7 @@ import { useApp } from '../store/AppContext';
 import { Package, Zap, BarChart3, ShieldCheck } from 'lucide-react';
 import apiClient from '../api/service';
 import { AxiosError } from 'axios';
+import { encryptPassword } from '../utils/encryption';
 
 export default function SignUp() {
   const { dispatch } = useApp();
@@ -24,12 +25,14 @@ export default function SignUp() {
 
     setError('');
 
+    const encryptedPassword = encryptPassword(password);
+
     try {
       const response = await apiClient.post('/api/auth/signup', {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
-        password,
+        password: encryptedPassword,
       });
 
       // Assuming the response includes user data and token
