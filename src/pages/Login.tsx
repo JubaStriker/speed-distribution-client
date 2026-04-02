@@ -3,34 +3,26 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../store/AppContext';
 import { Package, Zap, BarChart3, ShieldCheck } from 'lucide-react';
 
-const DEMO_EMAIL = 'admin@demo.com';
-const DEMO_PASSWORD = 'demo1234';
-
 export default function Login() {
-  const { dispatch } = useApp();
+  const { login } = useApp();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function handleLogin() {
-    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-      dispatch({
-        type: 'LOGIN',
-        payload: { id: 'u-1', email, name: 'Admin User', role: 'admin' },
-      });
+  async function handleLogin() {
+    if (!email || !password) return;
+    setError('');
+    setLoading(true);
+    try {
+      await login(email, password);
       navigate('/dashboard');
-    } else {
-      setError('Invalid email or password.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid email or password.');
+    } finally {
+      setLoading(false);
     }
-  }
-
-  function demoLogin() {
-    dispatch({
-      type: 'LOGIN',
-      payload: { id: 'u-1', email: DEMO_EMAIL, name: 'Admin User', role: 'admin' },
-    });
-    navigate('/dashboard');
   }
 
   return (
@@ -57,7 +49,8 @@ export default function Login() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={loading}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                 placeholder="you@example.com"
               />
             </div>
@@ -68,7 +61,8 @@ export default function Login() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={loading}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                 placeholder="••••••••"
               />
             </div>
@@ -81,31 +75,13 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
             >
-              Sign In
+              {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              {loading ? 'Signing in…' : 'Sign In'}
             </button>
           </form>
-
-          <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-white px-3 text-xs text-gray-400">or</span>
-            </div>
-          </div>
-
-          <button
-            onClick={demoLogin}
-            className="w-full border-2 border-blue-600 text-blue-700 font-semibold py-2.5 rounded-lg hover:bg-blue-50 transition-colors text-sm"
-          >
-            Demo Login
-          </button>
-
-          <p className="text-center text-xs text-gray-400 mt-3">
-            Demo: {DEMO_EMAIL} / {DEMO_PASSWORD}
-          </p>
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Don't have an account?{' '}
