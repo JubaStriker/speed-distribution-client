@@ -1,9 +1,9 @@
-import { useApp } from '../store/AppContext';
+import { useState } from 'react';
+import type { ActivityLog as ActivityLogEntry } from '../types';
 import { ClipboardList } from 'lucide-react';
 
 export default function ActivityLog() {
-  const { state } = useApp();
-  const { activityLogs } = state;
+  const [activityLogs] = useState<ActivityLogEntry[]>([]);
 
   return (
     <div className="space-y-5">

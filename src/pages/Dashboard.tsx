@@ -1,4 +1,5 @@
-import { useApp } from '../store/AppContext';
+import { useState } from 'react';
+import type { Order, Product, RestockItem, ActivityLog as ActivityLogEntry } from '../types';
 import { ShoppingCart, Clock, AlertTriangle, DollarSign, TrendingUp } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -27,8 +28,10 @@ function StatCard({
 }
 
 export default function Dashboard() {
-  const { state } = useApp();
-  const { orders, products, restockQueue, activityLogs } = state;
+  const [orders] = useState<Order[]>([]);
+  const [products] = useState<Product[]>([]);
+  const [restockQueue] = useState<RestockItem[]>([]);
+  const [activityLogs] = useState<ActivityLogEntry[]>([]);
 
   const today = new Date().toDateString();
   const todayOrders = orders.filter(o => new Date(o.createdAt).toDateString() === today);

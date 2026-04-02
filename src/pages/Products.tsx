@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useApp } from '../store/AppContext';
-import type { Product, ProductStatus } from '../types';
+import type { Product, ProductStatus, Category } from '../types';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 
 interface ProductForm {
@@ -17,8 +16,8 @@ const emptyForm: ProductForm = {
 };
 
 export default function Products() {
-  const { state, dispatch } = useApp();
-  const { products, categories } = state;
+  const [products] = useState<Product[]>([]);
+  const [categories] = useState<Category[]>([]);
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,34 +50,15 @@ export default function Products() {
 
   function handleSave() {
     if (!form.name || !form.categoryId || !form.price || !form.stock) return;
-    const payload: Product = {
-      id: editingId ?? `p-${Date.now()}`,
-      name: form.name,
-      categoryId: form.categoryId,
-      price: parseFloat(form.price),
-      stock: parseInt(form.stock),
-      minStockThreshold: parseInt(form.minStockThreshold) || 5,
-      status: parseInt(form.stock) === 0 ? 'out_of_stock' : form.status,
-      createdAt: editingId
-        ? (products.find(p => p.id === editingId)?.createdAt ?? new Date().toISOString())
-        : new Date().toISOString(),
-    };
-    dispatch({ type: editingId ? 'UPDATE_PRODUCT' : 'ADD_PRODUCT', payload });
     setShowModal(false);
   }
 
-  function handleDelete(id: string) {
-    if (confirm('Delete this product?')) {
-      dispatch({ type: 'DELETE_PRODUCT', payload: id });
-    }
+  function handleDelete(_id: string) {
+    confirm('Delete this product?');
   }
 
   function addCategory() {
     if (!catName.trim()) return;
-    dispatch({
-      type: 'ADD_CATEGORY',
-      payload: { id: `cat-${Date.now()}`, name: catName.trim(), createdAt: new Date().toISOString() },
-    });
     setCatName('');
     setShowCatModal(false);
   }

@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useApp } from '../store/AppContext';
+import { useDispatch } from 'react-redux';
+import type { AppDispatch } from '../store/store';
+import { loginThunk } from '../store/authSlice';
 import { Package, Zap, BarChart3, ShieldCheck } from 'lucide-react';
 
 export default function Login() {
-  const { login } = useApp();
+  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,7 +18,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await dispatch(loginThunk({ email, password })).unwrap();
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid email or password.');

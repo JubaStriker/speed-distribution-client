@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useApp } from '../store/AppContext';
+import { useDispatch } from 'react-redux';
+import type { AppDispatch } from '../store/store';
+import { signupThunk } from '../store/authSlice';
 import { Package, Zap, BarChart3, ShieldCheck } from 'lucide-react';
-import apiClient from '../api/service';
-import { AxiosError } from 'axios';
 import { encryptPassword } from '../utils/encryption';
 
 export default function SignUp() {
-  const { dispatch } = useApp();
+  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -28,37 +28,16 @@ export default function SignUp() {
     const encryptedPassword = encryptPassword(password);
 
     try {
-      const response = await apiClient.post('/api/auth/signup', {
+      await dispatch(signupThunk({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
         password: encryptedPassword,
-      });
-
-      // Assuming the response includes user data and token
-      const { user, token } = response.data;
-
-      if (token) {
-        // Save token if provided
-        localStorage.setItem('sd_jwt', token);
-      }
-
-      // Dispatch login action
-      dispatch({
-        type: 'LOGIN',
-        payload: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role || 'manager'
-        },
-      });
+      })).unwrap();
 
       navigate('/dashboard');
     } catch (err) {
-      const error = err as AxiosError<{ message?: string }>;
-      setError(error.response?.data?.message || error.message || 'Signup failed. Please try again.');
+      setError(err instanceof Error ? err.message : 'Signup failed. Please try again.');
     }
   }
 

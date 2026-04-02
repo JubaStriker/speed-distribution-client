@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useApp } from '../store/AppContext';
+import type { RestockItem, Product } from '../types';
 import { AlertTriangle, ArrowUp } from 'lucide-react';
 
 const PRIORITY_COLOR = {
@@ -9,15 +9,14 @@ const PRIORITY_COLOR = {
 };
 
 export default function RestockQueue() {
-  const { state, dispatch } = useApp();
-  const { restockQueue, products } = state;
+  const [restockQueue] = useState<RestockItem[]>([]);
+  const [products] = useState<Product[]>([]);
 
   const [restockAmounts, setRestockAmounts] = useState<Record<string, string>>({});
 
   function handleRestock(productId: string) {
     const qty = parseInt(restockAmounts[productId] || '0');
     if (!qty || qty <= 0) return;
-    dispatch({ type: 'RESTOCK_PRODUCT', payload: { productId, quantity: qty } });
     setRestockAmounts(prev => ({ ...prev, [productId]: '' }));
   }
 
