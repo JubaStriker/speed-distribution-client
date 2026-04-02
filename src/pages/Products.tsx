@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Product, ProductStatus, Category } from '../types';
+import { categoriesApi } from '../api';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 
 interface ProductForm {
@@ -17,7 +18,7 @@ const emptyForm: ProductForm = {
 
 export default function Products() {
   const [products] = useState<Product[]>([]);
-  const [categories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -28,6 +29,11 @@ export default function Products() {
   // Category modal
   const [showCatModal, setShowCatModal] = useState(false);
   const [catName, setCatName] = useState('');
+  const [catLoading, setCatLoading] = useState(false);
+
+  useEffect(() => {
+    categoriesApi.list().then(setCategories).catch(console.error);
+  }, []);
 
   function openAdd() {
     setEditingId(null);
@@ -57,10 +63,20 @@ export default function Products() {
     confirm('Delete this product?');
   }
 
-  function addCategory() {
+  async function addCategory() {
     if (!catName.trim()) return;
-    setCatName('');
-    setShowCatModal(false);
+    setCatLoading(true);
+    try {
+      await categoriesApi.create(catName.trim());
+      const updated = await categoriesApi.list();
+      setCategories(updated);
+      setCatName('');
+      setShowCatModal(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCatLoading(false);
+    }
   }
 
   const filtered = products.filter(p => {
@@ -285,9 +301,10 @@ export default function Products() {
               </button>
               <button
                 onClick={addCategory}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
+                disabled={catLoading}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
               >
-                Add
+                {catLoading ? 'Adding...' : 'Add'}
               </button>
             </div>
           </div>

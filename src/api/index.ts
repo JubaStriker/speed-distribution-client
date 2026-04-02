@@ -124,24 +124,27 @@ function normalizeLog(l: Record<string, any>): ActivityLog {
 export const authApi = {
   async login(email: string, password: string): Promise<{ token: string; user: User }> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<Record<string, any>>('POST', '/auth/login', { email, password });
-    const token: string = data.token ?? data.access_token ?? data.accessToken ?? '';
-    const user: User = data.user ? normalizeUser(data.user) : normalizeUser(data);
+    const res = await request<Record<string, any>>('POST', '/auth/login', { email, password });
+    const payload = res.data ?? res;
+    const token: string = payload.token ?? payload.access_token ?? payload.accessToken ?? '';
+    const user: User = payload.user ? normalizeUser(payload.user) : normalizeUser(payload);
     return { token, user };
   },
 
   async signup(firstName: string, lastName: string, email: string, password: string): Promise<{ token?: string; user: User }> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<Record<string, any>>('POST', '/auth/signup', { firstName, lastName, email, password });
-    const token: string | undefined = data.token ?? data.access_token ?? data.accessToken;
-    const user: User = data.user ? normalizeUser(data.user) : normalizeUser(data);
+    const res = await request<Record<string, any>>('POST', '/auth/signup', { firstName, lastName, email, password });
+    const payload = res.data ?? res;
+    const token: string | undefined = payload.token ?? payload.access_token ?? payload.accessToken;
+    const user: User = payload.user ? normalizeUser(payload.user) : normalizeUser(payload);
     return { token, user };
   },
 
   async me(): Promise<User> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<Record<string, any>>('GET', '/auth/me');
-    return normalizeUser(data);
+    const res = await request<Record<string, any>>('GET', '/auth/me');
+    const payload = res.data ?? res;
+    return normalizeUser(payload.user ?? payload);
   },
 };
 
