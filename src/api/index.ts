@@ -48,7 +48,8 @@ function normalizeUser(u: Record<string, any>): User {
   return {
     id: String(u.id),
     email: u.email,
-    name: u.name,
+    firstName: u.firstName ??  '',
+    lastName: u.lastName ??  '',
     role: u.role ?? 'manager',
   };
 }
@@ -129,9 +130,9 @@ export const authApi = {
     return { token, user };
   },
 
-  async signup(name: string, email: string, password: string): Promise<{ token?: string; user: User }> {
+  async signup(firstName: string, lastName: string, email: string, password: string): Promise<{ token?: string; user: User }> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<Record<string, any>>('POST', '/auth/signup', { name, email, password });
+    const data = await request<Record<string, any>>('POST', '/auth/signup', { firstName, lastName, email, password });
     const token: string | undefined = data.token ?? data.access_token ?? data.accessToken;
     const user: User = data.user ? normalizeUser(data.user) : normalizeUser(data);
     return { token, user };

@@ -2,28 +2,61 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../store/AppContext';
 import { Package, Zap, BarChart3, ShieldCheck } from 'lucide-react';
+import apiClient from '../api/service';
+import { AxiosError } from 'axios';
 
 export default function SignUp() {
   const { dispatch } = useApp();
   const navigate = useNavigate();
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
 
-  function handleSignUp() {
-    if (!name.trim()) return setError('Name is required.');
+  async function handleSignUp() {
+    if (!firstName.trim()) return setError('First name is required.');
+    if (!lastName.trim()) return setError('Last name is required.');
     if (!email.trim()) return setError('Email is required.');
     if (password.length < 6) return setError('Password must be at least 6 characters.');
     if (password !== confirm) return setError('Passwords do not match.');
 
-    // For the demo app, create a new user session immediately
-    dispatch({
-      type: 'LOGIN',
-      payload: { id: `u-${Date.now()}`, email, name: name.trim(), role: 'manager' },
-    });
-    navigate('/dashboard');
+    setError('');
+
+    try {
+      const response = await apiClient.post('/api/auth/signup', {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password,
+      });
+
+      // Assuming the response includes user data and token
+      const { user, token } = response.data;
+
+      if (token) {
+        // Save token if provided
+        localStorage.setItem('sd_jwt', token);
+      }
+
+      // Dispatch login action
+      dispatch({
+        type: 'LOGIN',
+        payload: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role || 'manager'
+        },
+      });
+
+      navigate('/dashboard');
+    } catch (err) {
+      const error = err as AxiosError<{ message?: string }>;
+      setError(error.response?.data?.message || error.message || 'Signup failed. Please try again.');
+    }
   }
 
   return (
@@ -44,14 +77,25 @@ export default function SignUp() {
 
           <form onSubmit={e => { e.preventDefault(); handleSignUp(); }} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">First name</label>
               <input
                 type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="John Smith"
+                placeholder="John"
+              />
+            </div>
+             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Last name</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Smith"
               />
             </div>
             <div>

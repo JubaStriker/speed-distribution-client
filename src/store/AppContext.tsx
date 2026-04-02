@@ -46,7 +46,7 @@ interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<Action>;
   login: (email: string, password: string) => Promise<void>;
-  signup: (name: string, email: string, password: string) => Promise<void>;
+  signup: (firstName: string, lastName: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -76,8 +76,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'LOGIN', payload: user });
   }
 
-  async function signup(name: string, email: string, password: string): Promise<void> {
-    const { token, user } = await authApi.signup(name, email, password);
+  async function signup(firstName: string, lastName: string, email: string, password: string): Promise<void> {
+    const { token, user } = await authApi.signup(firstName, lastName, email, password);
     if (token) saveToken(token);
     dispatch({ type: 'LOGIN', payload: user });
   }
