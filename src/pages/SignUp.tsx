@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '../store/store';
 import { signupThunk } from '../store/authSlice';
-import { Package, Zap, BarChart3, ShieldCheck } from 'lucide-react';
+import { Zap, BarChart3, ShieldCheck } from 'lucide-react';
 import { encryptPassword } from '../utils/encryption';
 
 export default function SignUp() {
@@ -48,9 +48,7 @@ export default function SignUp() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="bg-blue-600 text-white p-2 rounded-lg">
-              <Package size={20} />
-            </div>
+            <img src="/favicon.svg" alt="SmartInventory" className="w-9 h-9" />
             <span className="font-bold text-gray-900 text-lg">SmartInventory</span>
           </div>
 
@@ -141,9 +139,7 @@ export default function SignUp() {
       <div className="hidden lg:flex flex-1 flex-col justify-between bg-gradient-to-br from-blue-600 to-indigo-700 p-12 text-white">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="bg-white/20 backdrop-blur p-2.5 rounded-xl">
-            <Package size={24} />
-          </div>
+          <img src="/favicon.svg" alt="SmartInventory" className="w-10 h-10" />
           <span className="font-bold text-xl tracking-tight">SmartInventory</span>
         </div>
 
