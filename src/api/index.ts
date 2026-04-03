@@ -71,7 +71,7 @@ function normalizeProduct(p: Record<string, any>): Product {
     name: p.name,
     categoryId: String(p.categoryId ?? p.category_id ?? ''),
     price: Number(p.price ?? 0),
-    stock,
+    stock_quantity: p?.stock_quantity ?? 0,
     minStockThreshold: Number(p.minStockThreshold ?? p.min_stock_threshold ?? 5),
     status: (p.status as ProductStatus) ?? (stock === 0 ? 'out_of_stock' : 'active'),
     createdAt: p.createdAt ?? p.created_at ?? new Date().toISOString(),
@@ -180,17 +180,29 @@ export interface ProductQuery {
   limit?: number;
 }
 
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+}
+
+export interface PaginatedProducts {
+  data: Product[];
+  pagination: PaginationInfo;
+}
+
 export interface ProductInput {
   name: string;
   category_id: string;
   price: number;
-  stock: number;
+  stock_quantity: number;
   min_stock_threshold: number;
   status: ProductStatus;
 }
 
 export const productsApi = {
-  async list(query?: ProductQuery): Promise<Product[]> {
+  async list(query?: ProductQuery): Promise<PaginatedProducts> {
     const params = new URLSearchParams();
     if (query?.q) params.set('q', query.q);
     if (query?.category_id) params.set('category_id', query.category_id);
@@ -200,10 +212,16 @@ export const productsApi = {
 
     const qs = params.toString() ? `?${params.toString()}` : '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<any>('GET', `/products${qs}`);
-    const arr = Array.isArray(data) ? data : (data.products ?? data.data ?? []);
+    const res = await request<any>('GET', `/products${qs}`);
+    const arr = Array.isArray(res) ? res : (res.products ?? res.data ?? []);
+    const pagination: PaginationInfo = res.pagination ?? {
+      page: query?.page ?? 1,
+      limit: query?.limit ?? 20,
+      total: arr.length,
+      total_pages: 1,
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return arr.map((p: any) => normalizeProduct(p));
+    return { data: arr.map((p: any) => normalizeProduct(p)), pagination };
   },
 
   async create(input: ProductInput): Promise<Product> {
