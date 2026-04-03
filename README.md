@@ -1,73 +1,92 @@
-# React + TypeScript + Vite
+# SmartInventory 
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-featured inventory and order management dashboard.
 
-Currently, two official plugins are available:
+**Live site:** [https://speed-distribution-client.vercel.app](https://speed-distribution-client.vercel.app)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Authentication** — Secure sign-up and login with client-side password encryption.
+- **Dashboard** — At-a-glance stat cards (orders, stock alerts, revenue trends) with a bar chart powered by Recharts. Recent activity feed inline.
+- **Products** — Full CRUD for products with category assignment, price, stock level, minimum stock threshold, and status. Paginated table with search.
+- **Orders** — Create orders with async product search (react-select). Advance order status through a defined flow: `pending → confirmed → shipped → delivered` (or `cancelled`). Paginated with status badges.
+- **Restock Queue** — Auto-populated list of products below their minimum stock threshold, sorted by priority (high / medium / low).
+- **Activity Log** — Paginated audit trail of all actions taken within the system.
+- **Protected Routes** — All dashboard pages require authentication; unauthenticated users are redirected to login.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+| Layer | Technology |
+|---|---|
+| Framework | [React 19](https://react.dev) |
+| Language | [TypeScript 5.9](https://www.typescriptlang.org) |
+| Build tool | [Vite 8](https://vite.dev) |
+| Styling | [Tailwind CSS 4](https://tailwindcss.com) |
+| State management | [Redux Toolkit](https://redux-toolkit.js.org) + [React Redux](https://react-redux.js.org) |
+| Routing | [React Router v7](https://reactrouter.com) |
+| HTTP client | [Axios](https://axios-http.com) |
+| Charts | [Recharts](https://recharts.org) |
+| Select / async search | [React Select](https://react-select.com) |
+| Icons | [Lucide React](https://lucide.dev) |
+| Encryption | [CryptoJS](https://github.com/brix/crypto-js) |
+| Linting | ESLint 9 + typescript-eslint |
+| Deployment | [Vercel](https://vercel.com) |
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+
+### Install dependencies
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Run in development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm run dev
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Build for production
+
+```bash
+npm run build
+```
+
+### Preview production build locally
+
+```bash
+npm run preview
+```
+
+---
+
+## Project Structure
+
+```
+src/
+├── api/            # Axios API modules (products, orders, restock, activity, analytics)
+├── components/     # Shared UI components (Layout, sidebar, etc.)
+├── pages/          # Route-level page components
+│   ├── Login.tsx
+│   ├── SignUp.tsx
+│   ├── Dashboard.tsx
+│   ├── Products.tsx
+│   ├── Orders.tsx
+│   ├── RestockQueue.tsx
+│   └── ActivityLog.tsx
+├── store/          # Redux store and slices (auth)
+├── types/          # Shared TypeScript types
+├── utils/          # Utility helpers (e.g. password encryption)
+└── App.tsx         # Root component with routing
 ```
