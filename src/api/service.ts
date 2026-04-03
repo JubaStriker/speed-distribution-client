@@ -33,7 +33,6 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Handle unauthorized - maybe clear token and redirect to login
       console.error('Unauthorized access - clearing token');
-      // You might want to dispatch an action or redirect here
     }
     return Promise.reject(error);
   }
