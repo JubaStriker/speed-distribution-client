@@ -128,10 +128,15 @@ function normalizeRestockItem(r: Record<string, any>): RestockItem {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeLog(l: Record<string, any>): ActivityLog {
+  const rawDate = l.created_at ?? l.timestamp ?? l.createdAt;
+  const timestamp = typeof rawDate === 'object' && rawDate?.$date
+    ? rawDate.$date
+    : (rawDate ?? new Date().toISOString());
   return {
-    id: String(l.id),
+    id: String(l._id ?? l.id ?? Math.random()),
     message: l.message ?? l.description ?? '',
-    timestamp: l.timestamp ?? l.createdAt ?? l.created_at ?? new Date().toISOString(),
+    timestamp,
+    userEmail: l.userEmail ?? l.user_email ?? undefined,
   };
 }
 
@@ -412,12 +417,37 @@ export const analyticsApi = {
 
 // ─── Activity Log ──────────────────────────────────────────────────────────────
 
+export interface ActivityLogQuery {
+  page?: number;
+  limit?: number;
+  userId?: string;
+  method?: string;
+}
+
+export interface PaginatedActivityLog {
+  data: ActivityLog[];
+  pagination: PaginationInfo;
+}
+
 export const activityApi = {
-  async list(): Promise<ActivityLog[]> {
+  async list(query?: ActivityLogQuery): Promise<PaginatedActivityLog> {
+    const params = new URLSearchParams();
+    if (query?.page) params.set('page', String(query.page));
+    if (query?.limit) params.set('limit', String(query.limit));
+    if (query?.userId) params.set('userId', query.userId);
+    if (query?.method) params.set('method', query.method);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<any>('GET', '/activity-log');
-    const arr = Array.isArray(data) ? data : (data.logs ?? data.activities ?? data.data ?? []);
+    const res = await request<any>('GET', `/activity-log${qs}`);
+    const arr = Array.isArray(res) ? res : (res.logs ?? res.activities ?? res.data ?? []);
+    const pagination: PaginationInfo = res.pagination ?? {
+      page: query?.page ?? 1,
+      limit: query?.limit ?? 20,
+      total: arr.length,
+      total_pages: 1,
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return arr.map((l: any) => normalizeLog(l));
+    return { data: arr.map((l: any) => normalizeLog(l)), pagination };
   },
 };

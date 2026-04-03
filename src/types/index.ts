@@ -66,4 +66,5 @@ export interface ActivityLog {
   id: string;
   message: string;
   timestamp: string;
+  userEmail?: string;
 }

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Clock, AlertTriangle, TrendingUp, Package } from 'lucide-react';
+import { ShoppingCart, Clock, AlertTriangle, TrendingUp, Package, ClipboardList } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { analyticsApi, type AnalyticsData } from '../api';
-import type { OrderStatus } from '../types';
+import { analyticsApi, activityApi, type AnalyticsData } from '../api';
+import type { OrderStatus, ActivityLog } from '../types';
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -40,12 +40,16 @@ export default function Dashboard() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
   useEffect(() => {
     analyticsApi.get()
       .then(setAnalytics)
       .catch(e => setError(e.message ?? 'Failed to load analytics'))
       .finally(() => setLoading(false));
+    activityApi.list({ page: 1, limit: 5 })
+      .then(res => setActivityLogs(res.data))
+      .catch(() => {});
   }, []);
 
   const statusChartData = analytics
@@ -148,6 +152,41 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
+          <ClipboardList size={18} className="text-gray-500" />
+          <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+        </div>
+        {activityLogs.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-gray-400">No activity recorded yet.</p>
+        ) : (
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <th className="px-5 py-2.5 text-left font-semibold text-gray-600">Message</th>
+                <th className="px-5 py-2.5 text-left font-semibold text-gray-600 whitespace-nowrap">User</th>
+                <th className="px-5 py-2.5 text-left font-semibold text-gray-600 whitespace-nowrap">Date & Time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {activityLogs.map(log => {
+                const date = new Date(log.timestamp);
+                return (
+                  <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3 text-gray-700">{log.message}</td>
+                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">{log.userEmail ?? '—'}</td>
+                    <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
+                      {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
