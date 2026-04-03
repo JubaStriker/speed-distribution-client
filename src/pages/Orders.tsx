@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useApp } from '../store/AppContext';
-import type { Order, OrderItem, OrderStatus } from '../types';
+import type { Order, OrderItem, OrderStatus, Product } from '../types';
 import { Plus, ChevronDown } from 'lucide-react';
 
 const STATUS_FLOW: OrderStatus[] = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
@@ -14,8 +13,8 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
 };
 
 export default function Orders() {
-  const { state, dispatch } = useApp();
-  const { orders, products } = state;
+  const [orders] = useState<Order[]>([]);
+  const [products] = useState<Product[]>([]);
 
   const [showModal, setShowModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -81,20 +80,11 @@ export default function Orders() {
 
   function handleCreate() {
     if (!canSubmit()) return;
-    const order: Order = {
-      id: `ord-${Date.now()}`,
-      customerName: customerName.trim(),
-      items: selectedItems,
-      totalPrice: totalPrice(),
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
-    dispatch({ type: 'ADD_ORDER', payload: order });
     setShowModal(false);
   }
 
-  function updateStatus(id: string, status: OrderStatus) {
-    dispatch({ type: 'UPDATE_ORDER_STATUS', payload: { id, status } });
+  function updateStatus(_id: string, _status: OrderStatus) {
+    // TODO: wire to Redux
   }
 
   const filtered = orders.filter(o => {

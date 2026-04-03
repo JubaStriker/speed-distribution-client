@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider, useApp } from './store/AppContext';
+import { useDispatch, useSelector } from 'react-redux';
+import type { RootState, AppDispatch } from './store/store';
+import { initializeAuth } from './store/authSlice';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -10,22 +13,27 @@ import RestockQueue from './pages/RestockQueue';
 import ActivityLog from './pages/ActivityLog';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { state } = useApp();
-  if (state.isInitializing) {
+  const { isInitializing, user } = useSelector((state: RootState) => state.auth);
+  if (isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
-  if (!state.user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
   return <Layout>{children}</Layout>;
 }
 
 function AppRoutes() {
-  const { state } = useApp();
+  const dispatch = useDispatch<AppDispatch>();
+  const { isInitializing, user } = useSelector((state: RootState) => state.auth);
 
-  if (state.isInitializing) {
+  useEffect(() => {
+    dispatch(initializeAuth());
+  }, [dispatch]);
+
+  if (isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -37,11 +45,11 @@ function AppRoutes() {
     <Routes>
       <Route
         path="/login"
-        element={state.user ? <Navigate to="/dashboard" replace /> : <Login />}
+        element={user ? <Navigate to="/dashboard" replace /> : <Login />}
       />
       <Route
         path="/signup"
-        element={state.user ? <Navigate to="/dashboard" replace /> : <SignUp />}
+        element={user ? <Navigate to="/dashboard" replace /> : <SignUp />}
       />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
@@ -55,10 +63,8 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </AppProvider>
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }

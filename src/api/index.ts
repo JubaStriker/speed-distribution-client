@@ -48,7 +48,8 @@ function normalizeUser(u: Record<string, any>): User {
   return {
     id: String(u.id),
     email: u.email,
-    name: u.name,
+    firstName: u.firstName ??  '',
+    lastName: u.lastName ??  '',
     role: u.role ?? 'manager',
   };
 }
@@ -70,7 +71,7 @@ function normalizeProduct(p: Record<string, any>): Product {
     name: p.name,
     categoryId: String(p.categoryId ?? p.category_id ?? ''),
     price: Number(p.price ?? 0),
-    stock,
+    stock_quantity: p?.stock_quantity ?? 0,
     minStockThreshold: Number(p.minStockThreshold ?? p.min_stock_threshold ?? 5),
     status: (p.status as ProductStatus) ?? (stock === 0 ? 'out_of_stock' : 'active'),
     createdAt: p.createdAt ?? p.created_at ?? new Date().toISOString(),
@@ -123,24 +124,27 @@ function normalizeLog(l: Record<string, any>): ActivityLog {
 export const authApi = {
   async login(email: string, password: string): Promise<{ token: string; user: User }> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<Record<string, any>>('POST', '/auth/login', { email, password });
-    const token: string = data.token ?? data.access_token ?? data.accessToken ?? '';
-    const user: User = data.user ? normalizeUser(data.user) : normalizeUser(data);
+    const res = await request<Record<string, any>>('POST', '/auth/login', { email, password });
+    const payload = res.data ?? res;
+    const token: string = payload.token ?? payload.access_token ?? payload.accessToken ?? '';
+    const user: User = payload.user ? normalizeUser(payload.user) : normalizeUser(payload);
     return { token, user };
   },
 
-  async signup(name: string, email: string, password: string): Promise<{ token?: string; user: User }> {
+  async signup(firstName: string, lastName: string, email: string, password: string): Promise<{ token?: string; user: User }> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<Record<string, any>>('POST', '/auth/signup', { name, email, password });
-    const token: string | undefined = data.token ?? data.access_token ?? data.accessToken;
-    const user: User = data.user ? normalizeUser(data.user) : normalizeUser(data);
+    const res = await request<Record<string, any>>('POST', '/auth/signup', { firstName, lastName, email, password });
+    const payload = res.data ?? res;
+    const token: string | undefined = payload.token ?? payload.access_token ?? payload.accessToken;
+    const user: User = payload.user ? normalizeUser(payload.user) : normalizeUser(payload);
     return { token, user };
   },
 
   async me(): Promise<User> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<Record<string, any>>('GET', '/auth/me');
-    return normalizeUser(data);
+    const res = await request<Record<string, any>>('GET', '/auth/me');
+    const payload = res.data ?? res;
+    return normalizeUser(payload.user ?? payload);
   },
 };
 
@@ -176,17 +180,29 @@ export interface ProductQuery {
   limit?: number;
 }
 
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+}
+
+export interface PaginatedProducts {
+  data: Product[];
+  pagination: PaginationInfo;
+}
+
 export interface ProductInput {
   name: string;
   category_id: string;
   price: number;
-  stock: number;
+  stock_quantity: number;
   min_stock_threshold: number;
   status: ProductStatus;
 }
 
 export const productsApi = {
-  async list(query?: ProductQuery): Promise<Product[]> {
+  async list(query?: ProductQuery): Promise<PaginatedProducts> {
     const params = new URLSearchParams();
     if (query?.q) params.set('q', query.q);
     if (query?.category_id) params.set('category_id', query.category_id);
@@ -196,10 +212,16 @@ export const productsApi = {
 
     const qs = params.toString() ? `?${params.toString()}` : '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<any>('GET', `/products${qs}`);
-    const arr = Array.isArray(data) ? data : (data.products ?? data.data ?? []);
+    const res = await request<any>('GET', `/products${qs}`);
+    const arr = Array.isArray(res) ? res : (res.products ?? res.data ?? []);
+    const pagination: PaginationInfo = res.pagination ?? {
+      page: query?.page ?? 1,
+      limit: query?.limit ?? 20,
+      total: arr.length,
+      total_pages: 1,
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return arr.map((p: any) => normalizeProduct(p));
+    return { data: arr.map((p: any) => normalizeProduct(p)), pagination };
   },
 
   async create(input: ProductInput): Promise<Product> {

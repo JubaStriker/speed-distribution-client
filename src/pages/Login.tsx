@@ -1,22 +1,27 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useApp } from '../store/AppContext';
-import { Package, Zap, BarChart3, ShieldCheck } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import type { AppDispatch } from '../store/store';
+import { loginThunk } from '../store/authSlice';
+import { Package, Zap, BarChart3, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
-  const { login } = useApp();
+  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  async function handleLogin() {
-    if (!email || !password) return;
+  async function handleLogin(overrideEmail?: string, overridePassword?: string) {
+    const loginEmail = overrideEmail ?? email;
+    const loginPassword = overridePassword ?? password;
+    if (!loginEmail || !loginPassword) return;
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await dispatch(loginThunk({ email: loginEmail, password: loginPassword })).unwrap();
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid email or password.');
@@ -39,7 +44,20 @@ export default function Login() {
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h2>
-          <p className="text-gray-500 text-sm mb-7">Sign in to your account to continue</p>
+          <p className="text-gray-500 text-sm mb-4">Sign in to your account to continue</p>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('admin@demo.com');
+              setPassword('Admin12345');
+              setError('');
+              handleLogin('admin@demo.com', 'Admin12345');
+            }}
+            className="w-full mb-5 border border-dashed border-blue-400 text-blue-600 bg-blue-50 hover:bg-blue-100 text-sm font-medium py-2 rounded-lg transition-colors"
+          >
+            Use Demo Credentials
+          </button>
 
           <form onSubmit={e => { e.preventDefault(); handleLogin(); }} className="space-y-4">
             <div>
@@ -56,15 +74,25 @@ export default function Login() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             {error && (

@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { useApp } from '../store/AppContext';
-import type { Product, ProductStatus } from '../types';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import type { Product, ProductStatus, Category } from '../types';
+import type { PaginationInfo } from '../api';
+import { categoriesApi, productsApi } from '../api';
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ProductForm {
   name: string;
@@ -16,9 +17,14 @@ const emptyForm: ProductForm = {
   name: '', categoryId: '', price: '', stock: '', minStockThreshold: '5', status: 'active',
 };
 
+const PAGE_LIMIT = 20;
+
 export default function Products() {
-  const { state, dispatch } = useApp();
-  const { products, categories } = state;
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, limit: PAGE_LIMIT, total: 0, total_pages: 1 });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [version, setVersion] = useState(0);
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -29,6 +35,26 @@ export default function Products() {
   // Category modal
   const [showCatModal, setShowCatModal] = useState(false);
   const [catName, setCatName] = useState('');
+  const [catLoading, setCatLoading] = useState(false);
+
+  // Delete confirmation modal
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+
+  useEffect(() => {
+    categoriesApi.list().then(setCategories).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    productsApi.list({
+      q: search || undefined,
+      category_id: filterCategory || undefined,
+      page: currentPage,
+      limit: PAGE_LIMIT,
+    }).then(result => {
+      setProducts(result.data);
+      setPagination(result.pagination);
+    }).catch(console.error);
+  }, [currentPage, search, filterCategory, version]);
 
   function openAdd() {
     setEditingId(null);
@@ -42,52 +68,64 @@ export default function Products() {
       name: p.name,
       categoryId: p.categoryId,
       price: String(p.price),
-      stock: String(p.stock),
+      stock: String(p.stock_quantity),
       minStockThreshold: String(p.minStockThreshold),
       status: p.status,
     });
     setShowModal(true);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.name || !form.categoryId || !form.price || !form.stock) return;
-    const payload: Product = {
-      id: editingId ?? `p-${Date.now()}`,
+    const productData = {
       name: form.name,
-      categoryId: form.categoryId,
+      category_id: form.categoryId,
       price: parseFloat(form.price),
-      stock: parseInt(form.stock),
-      minStockThreshold: parseInt(form.minStockThreshold) || 5,
-      status: parseInt(form.stock) === 0 ? 'out_of_stock' : form.status,
-      createdAt: editingId
-        ? (products.find(p => p.id === editingId)?.createdAt ?? new Date().toISOString())
-        : new Date().toISOString(),
+      stock_quantity: parseInt(form.stock, 10),
+      min_stock_threshold: parseInt(form.minStockThreshold, 10),
+      status: form.status,
     };
-    dispatch({ type: editingId ? 'UPDATE_PRODUCT' : 'ADD_PRODUCT', payload });
-    setShowModal(false);
-  }
 
-  function handleDelete(id: string) {
-    if (confirm('Delete this product?')) {
-      dispatch({ type: 'DELETE_PRODUCT', payload: id });
+    try {
+      if (editingId) {
+        await productsApi.update(editingId, productData);
+      } else {
+        await productsApi.create(productData);
+      }
+      setShowModal(false);
+      setVersion(v => v + 1);
+    } catch (err) {
+      console.error(err);
     }
   }
 
-  function addCategory() {
-    if (!catName.trim()) return;
-    dispatch({
-      type: 'ADD_CATEGORY',
-      payload: { id: `cat-${Date.now()}`, name: catName.trim(), createdAt: new Date().toISOString() },
-    });
-    setCatName('');
-    setShowCatModal(false);
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    try {
+      await productsApi.remove(deleteTarget.id);
+      setDeleteTarget(null);
+      setVersion(v => v + 1);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
-  const filtered = products.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    const matchCat = filterCategory ? p.categoryId === filterCategory : true;
-    return matchSearch && matchCat;
-  });
+  async function addCategory() {
+    if (!catName.trim()) return;
+    setCatLoading(true);
+    try {
+      await categoriesApi.create(catName.trim());
+      const updated = await categoriesApi.list();
+      setCategories(updated);
+      setCatName('');
+      setShowCatModal(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCatLoading(false);
+    }
+  }
+
 
   return (
     <div className="space-y-5">
@@ -117,13 +155,13 @@ export default function Products() {
             type="text"
             placeholder="Search products..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
             className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-52"
           />
         </div>
         <select
           value={filterCategory}
-          onChange={e => setFilterCategory(e.target.value)}
+          onChange={e => { setFilterCategory(e.target.value); setCurrentPage(1); }}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Categories</option>
@@ -146,22 +184,22 @@ export default function Products() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && (
+              {products.length === 0 && (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-gray-400">No products found.</td>
                 </tr>
               )}
-              {filtered.map(p => {
+              {products.map(p => {
                 const cat = categories.find(c => c.id === p.categoryId);
-                const isLow = p.stock < p.minStockThreshold && p.stock > 0;
+                const isLow = p.stock_quantity < p.minStockThreshold && p.stock_quantity > 0;
                 return (
                   <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
                     <td className="px-4 py-3 text-gray-600">{cat?.name ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-700">${p.price.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-gray-700">৳{p.price.toFixed(2)}</td>
                     <td className="px-4 py-3">
                       <span className={isLow ? 'text-yellow-600 font-medium' : 'text-gray-700'}>
-                        {p.stock}
+                        {p.stock_quantity}
                       </span>
                       <span className="text-gray-400 text-xs ml-1">(min {p.minStockThreshold})</span>
                     </td>
@@ -182,7 +220,7 @@ export default function Products() {
                           <Pencil size={15} />
                         </button>
                         <button
-                          onClick={() => handleDelete(p.id)}
+                          onClick={() => setDeleteTarget(p)}
                           className="text-gray-400 hover:text-red-600 transition-colors"
                         >
                           <Trash2 size={15} />
@@ -195,6 +233,41 @@ export default function Products() {
             </tbody>
           </table>
         </div>
+        {pagination.total > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+            <span className="text-sm text-gray-500">
+              {pagination.total} product{pagination.total !== 1 ? 's' : ''} &mdash; page {pagination.page} of {pagination.total_pages}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(p => p - 1)}
+                disabled={currentPage <= 1}
+                className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              {Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`min-w-[32px] px-2 py-1 rounded-lg text-sm transition-colors
+                    ${page === currentPage
+                      ? 'bg-blue-600 text-white font-medium'
+                      : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(p => p + 1)}
+                disabled={currentPage >= pagination.total_pages}
+                className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Product Modal */}
@@ -224,7 +297,7 @@ export default function Products() {
                 </select>
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Price ($)">
+                <Field label="Price (৳)">
                   <input
                     className={inputCls}
                     type="number"
@@ -285,6 +358,35 @@ export default function Products() {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+              <Trash2 size={22} className="text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 text-center mb-1">Delete Product</h3>
+            <p className="text-sm text-gray-500 text-center mb-6">
+              Are you sure you want to delete <span className="font-medium text-gray-700">{deleteTarget.name}</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Category Modal */}
       {showCatModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -305,9 +407,10 @@ export default function Products() {
               </button>
               <button
                 onClick={addCategory}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
+                disabled={catLoading}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-2.5 rounded-lg text-sm font-medium transition-colors"
               >
-                Add
+                {catLoading ? 'Adding...' : 'Add'}
               </button>
             </div>
           </div>

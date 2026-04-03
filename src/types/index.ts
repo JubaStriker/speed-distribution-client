@@ -3,7 +3,8 @@ export type UserRole = 'admin' | 'manager';
 export interface User {
   id: string;
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   role: UserRole;
 }
 
@@ -20,7 +21,7 @@ export interface Product {
   name: string;
   categoryId: string;
   price: number;
-  stock: number;
+  stock_quantity: number;
   minStockThreshold: number;
   status: ProductStatus;
   createdAt: string;

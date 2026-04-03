@@ -1,5 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useApp } from '../store/AppContext';
+import { useDispatch, useSelector } from 'react-redux';
+import type { RootState, AppDispatch } from '../store/store';
+import { logout, setRestockCount } from '../store/authSlice';
 import {
   LayoutDashboard, Package, ShoppingCart, AlertTriangle,
   ClipboardList, LogOut, Menu, X,
@@ -16,22 +18,21 @@ const navItems = [
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { state, dispatch, logout } = useApp();
+  const dispatch = useDispatch<AppDispatch>();
+  const { user, restockCount } = useSelector((state: RootState) => state.auth);
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Fetch restock count for the sidebar badge
   useEffect(() => {
-    if (!state.user) return;
+    if (!user) return;
     restockApi.list()
-      .then(items => dispatch({ type: 'SET_RESTOCK_COUNT', payload: items.length }))
+      .then(items => dispatch(setRestockCount(items.length)))
       .catch(() => {});
-  }, [state.user, dispatch]);
-
-  const lowStockCount = state.restockCount;
+  }, [user, dispatch]);
 
   function handleLogout() {
-    logout();
+    dispatch(logout());
     navigate('/login');
   }
 
@@ -52,7 +53,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         <div className="p-5 border-b border-gray-100">
           <h1 className="text-lg font-bold text-gray-900">SmartInventory</h1>
-          <p className="text-xs text-gray-500 mt-0.5">{state.user?.name} · {state.user?.role}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{user?.firstName} {user?.lastName} · {user?.role}</p>
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
@@ -70,9 +71,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               <Icon size={18} />
               <span>{label}</span>
-              {to === '/restock' && lowStockCount > 0 && (
+              {to === '/restock' && restockCount > 0 && (
                 <span className="ml-auto bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-                  {lowStockCount}
+                  {restockCount}
                 </span>
               )}
             </NavLink>
