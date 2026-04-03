@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import type { AppDispatch } from '../store/store';
+import { setRestockCount } from '../store/authSlice';
 import type { RestockItem } from '../types';
 import { restockApi } from '../api';
 import { AlertTriangle, PackageOpen, RefreshCw } from 'lucide-react';
@@ -10,6 +13,7 @@ const PRIORITY_COLOR: Record<string, string> = {
 };
 
 export default function RestockQueue() {
+  const dispatch = useDispatch<AppDispatch>();
   const [restockQueue, setRestockQueue] = useState<RestockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +26,7 @@ export default function RestockQueue() {
     try {
       const items = await restockApi.list();
       setRestockQueue(items);
+      dispatch(setRestockCount(items.length));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load restock queue');
     } finally {

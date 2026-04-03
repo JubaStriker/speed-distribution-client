@@ -4,7 +4,7 @@ import type { MultiValue } from 'react-select';
 import type { Order, OrderStatus, Product } from '../types';
 import { ordersApi, productsApi } from '../api';
 import type { PaginationInfo } from '../api';
-import { Plus, ChevronDown, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ChevronDown, X, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
 const STATUS_FLOW: OrderStatus[] = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
 
@@ -132,8 +132,8 @@ export default function Orders() {
   }
 
   async function updateStatus(id: string, status: OrderStatus) {
-    const updated = await ordersApi.updateStatus(id, status);
-    setOrders(prev => prev.map(o => o.id === id ? updated : o));
+    await ordersApi.updateStatus(id, status);
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
   }
 
   const filtered = orders.filter(o => {
@@ -179,7 +179,10 @@ export default function Orders() {
       {/* Orders Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loadingOrders ? (
-          <div className="py-16 text-center text-gray-400 text-sm">Loading orders...</div>
+          <div className="py-16 flex flex-col items-center gap-3">
+            <RefreshCw size={28} className="animate-spin text-blue-500" />
+            <p className="text-sm text-gray-400">Loading orders…</p>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center text-gray-400 text-sm">No orders found.</div>
         ) : (

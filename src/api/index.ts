@@ -310,7 +310,7 @@ export const ordersApi = {
       customer_name: customerName,
       items,
     });
-    return normalizeOrder(data.order ?? data);
+    return normalizeOrder(data.order ?? data.data ?? data);
   },
 
   async updateStatus(id: string, status: OrderStatus): Promise<Order> {
@@ -370,6 +370,42 @@ export const dashboardApi = {
       deliveredOrders: d.deliveredOrders ?? d.delivered_orders ?? d.orders?.delivered ?? 0,
       todayRevenue: d.todayRevenue ?? d.today_revenue ?? d.revenue?.today ?? 0,
       lowStockCount: d.lowStockCount ?? d.low_stock_count ?? d.stock?.low_count ?? 0,
+    };
+  },
+};
+
+// ─── Analytics ─────────────────────────────────────────────────────────────────
+
+export interface AnalyticsData {
+  total_orders_today: number;
+  pending_orders_today: number;
+  low_stock_count: number;
+  revenue_today: number;
+  orders_by_status: {
+    pending: number;
+    confirmed: number;
+    shipped: number;
+    delivered: number;
+    cancelled: number;
+  };
+  latest_orders: Order[];
+}
+
+export const analyticsApi = {
+  async get(): Promise<AnalyticsData> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await request<Record<string, any>>('GET', '/analytics');
+    const d = res.data ?? res;
+    return {
+      total_orders_today: Number(d.total_orders_today ?? 0),
+      pending_orders_today: Number(d.pending_orders_today ?? 0),
+      low_stock_count: Number(d.low_stock_count ?? 0),
+      revenue_today: Number(d.revenue_today ?? 0),
+      orders_by_status: d.orders_by_status ?? {
+        pending: 0, confirmed: 0, shipped: 0, delivered: 0, cancelled: 0,
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      latest_orders: Array.isArray(d.latest_orders) ? d.latest_orders.map((o: any) => normalizeOrder(o)) : [],
     };
   },
 };
