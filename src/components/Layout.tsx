@@ -52,7 +52,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
       >
         <div className="p-5 border-b border-gray-100">
-          <h1 className="text-lg font-bold text-gray-900">SmartInventory</h1>
+          <div className="flex items-center gap-2 mb-0.5">
+            <img src="/favicon.svg" alt="SmartInventory" className="w-7 h-7" />
+            <h1 className="text-lg font-bold text-gray-900">SmartInventory</h1>
+          </div>
           <p className="text-xs text-gray-500 mt-0.5">{user?.firstName} {user?.lastName} · {user?.role}</p>
         </div>
 
@@ -98,6 +101,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <button onClick={() => setSidebarOpen(true)} className="text-gray-600">
             {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
+          <img src="/favicon.svg" alt="SmartInventory" className="w-6 h-6" />
           <span className="font-semibold text-gray-900">SmartInventory</span>
         </header>
 

@@ -1,7 +1,15 @@
 import type {
   User, Category, Product, Order, OrderItem,
-  RestockItem, ActivityLog, OrderStatus, ProductStatus,
+  RestockItem, ActivityLog, OrderStatus, ProductStatus, RestockStatus,
 } from '../types';
+
+// ─── ID Generator ──────────────────────────────────────────────────────────────
+
+export function getId(prefix: string): string {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${prefix}-${timestamp}-${random}`;
+}
 
 // ─── Token helpers ─────────────────────────────────────────────────────────────
 
@@ -81,9 +89,10 @@ function normalizeProduct(p: Record<string, any>): Product {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeOrderItem(i: Record<string, any>): OrderItem {
   return {
-    productId: String(i.productId ?? i.product_id ?? i.productId),
+    productId: String(i.productId ?? i.product_id ?? ''),
+    productName: i.productName ?? i.product_name ?? undefined,
     quantity: Number(i.quantity ?? 1),
-    priceAtTime: Number(i.priceAtTime ?? i.price_at_time ?? i.price ?? 0),
+    priceAtTime: Number(i.priceAtTime ?? i.price_at_time ?? i.unit_price ?? i.price ?? 0),
   };
 }
 
@@ -93,6 +102,7 @@ function normalizeOrder(o: Record<string, any>): Order {
   const items: OrderItem[] = Array.isArray(o.items) ? o.items.map((i: any) => normalizeOrderItem(i)) : [];
   return {
     id: String(o.id),
+    orderId: o.order_id ?? o.orderId ?? undefined,
     customerName: o.customerName ?? o.customer_name ?? '',
     items,
     totalPrice: Number(o.totalPrice ?? o.total_price ?? 0),
@@ -104,18 +114,29 @@ function normalizeOrder(o: Record<string, any>): Order {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeRestockItem(r: Record<string, any>): RestockItem {
   return {
-    productId: String(r.productId ?? r.product_id ?? r.id),
+    restock_id: r.restock_id ?? r.restockId ?? getId('RES'),
+    productId: String(r.product_id ?? r.productId ?? r.id),
+    name: r.name ?? r.productName ?? r.product_name ?? '',
     addedAt: r.addedAt ?? r.added_at ?? r.createdAt ?? r.created_at ?? new Date().toISOString(),
-    priority: r.priority ?? 'medium',
+    priority: ((r.priority as string)?.toLowerCase() ?? 'medium') as RestockItem['priority'],
+    status: (r.status as RestockStatus) ?? 'pending',
+    stock_quantity: Number(r.stock_quantity ?? 0),
+    min_stock_threshold: Number(r.min_stock_threshold ?? r.minStockThreshold ?? 0),
+    category_name: r.category_name ?? r.categoryName ?? undefined,
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeLog(l: Record<string, any>): ActivityLog {
+  const rawDate = l.created_at ?? l.timestamp ?? l.createdAt;
+  const timestamp = typeof rawDate === 'object' && rawDate?.$date
+    ? rawDate.$date
+    : (rawDate ?? new Date().toISOString());
   return {
-    id: String(l.id),
+    id: String(l._id ?? l.id ?? Math.random()),
     message: l.message ?? l.description ?? '',
-    timestamp: l.timestamp ?? l.createdAt ?? l.created_at ?? new Date().toISOString(),
+    timestamp,
+    userEmail: l.userEmail ?? l.user_email ?? undefined,
   };
 }
 
@@ -255,8 +276,13 @@ export interface OrderItemInput {
   quantity: number;
 }
 
+export interface PaginatedOrders {
+  data: Order[];
+  pagination: PaginationInfo;
+}
+
 export const ordersApi = {
-  async list(query?: OrderQuery): Promise<Order[]> {
+  async list(query?: OrderQuery): Promise<PaginatedOrders> {
     const params = new URLSearchParams();
     if (query?.status) params.set('status', query.status);
     if (query?.today) params.set('today', 'true');
@@ -265,10 +291,16 @@ export const ordersApi = {
 
     const qs = params.toString() ? `?${params.toString()}` : '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<any>('GET', `/orders${qs}`);
-    const arr = Array.isArray(data) ? data : (data.orders ?? data.data ?? []);
+    const res = await request<any>('GET', `/orders${qs}`);
+    const arr = Array.isArray(res) ? res : (res.orders ?? res.data ?? []);
+    const pagination: PaginationInfo = res.pagination ?? {
+      page: query?.page ?? 1,
+      limit: query?.limit ?? 20,
+      total: arr.length,
+      total_pages: 1,
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return arr.map((o: any) => normalizeOrder(o));
+    return { data: arr.map((o: any) => normalizeOrder(o)), pagination };
   },
 
   async get(id: string): Promise<Order> {
@@ -283,7 +315,7 @@ export const ordersApi = {
       customer_name: customerName,
       items,
     });
-    return normalizeOrder(data.order ?? data);
+    return normalizeOrder(data.order ?? data.data ?? data);
   },
 
   async updateStatus(id: string, status: OrderStatus): Promise<Order> {
@@ -310,8 +342,14 @@ export const restockApi = {
 
   async restock(productId: string, quantity: number): Promise<Product> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<Record<string, any>>('PUT', `/restock/${productId}/restock`, { quantity });
+    const data = await request<Record<string, any>>('PUT', `/restock/${productId}/restock`, { quantity_to_add: quantity });
     return normalizeProduct(data.product ?? data);
+  },
+
+  async updateStatus(restockId: string, status: RestockStatus): Promise<RestockItem> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await request<Record<string, any>>('PUT', `/restock/${restockId}/status`, { status });
+    return normalizeRestockItem(data.restockItem ?? data.restock_item ?? data);
   },
 };
 
@@ -341,14 +379,75 @@ export const dashboardApi = {
   },
 };
 
+// ─── Analytics ─────────────────────────────────────────────────────────────────
+
+export interface AnalyticsData {
+  total_orders_today: number;
+  pending_orders_today: number;
+  low_stock_count: number;
+  revenue_today: number;
+  orders_by_status: {
+    pending: number;
+    confirmed: number;
+    shipped: number;
+    delivered: number;
+    cancelled: number;
+  };
+  latest_orders: Order[];
+}
+
+export const analyticsApi = {
+  async get(): Promise<AnalyticsData> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await request<Record<string, any>>('GET', '/analytics');
+    const d = res.data ?? res;
+    return {
+      total_orders_today: Number(d.total_orders_today ?? 0),
+      pending_orders_today: Number(d.pending_orders_today ?? 0),
+      low_stock_count: Number(d.low_stock_count ?? 0),
+      revenue_today: Number(d.revenue_today ?? 0),
+      orders_by_status: d.orders_by_status ?? {
+        pending: 0, confirmed: 0, shipped: 0, delivered: 0, cancelled: 0,
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      latest_orders: Array.isArray(d.latest_orders) ? d.latest_orders.map((o: any) => normalizeOrder(o)) : [],
+    };
+  },
+};
+
 // ─── Activity Log ──────────────────────────────────────────────────────────────
 
+export interface ActivityLogQuery {
+  page?: number;
+  limit?: number;
+  userId?: string;
+  method?: string;
+}
+
+export interface PaginatedActivityLog {
+  data: ActivityLog[];
+  pagination: PaginationInfo;
+}
+
 export const activityApi = {
-  async list(): Promise<ActivityLog[]> {
+  async list(query?: ActivityLogQuery): Promise<PaginatedActivityLog> {
+    const params = new URLSearchParams();
+    if (query?.page) params.set('page', String(query.page));
+    if (query?.limit) params.set('limit', String(query.limit));
+    if (query?.userId) params.set('userId', query.userId);
+    if (query?.method) params.set('method', query.method);
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await request<any>('GET', '/activity-log');
-    const arr = Array.isArray(data) ? data : (data.logs ?? data.activities ?? data.data ?? []);
+    const res = await request<any>('GET', `/activity-log${qs}`);
+    const arr = Array.isArray(res) ? res : (res.logs ?? res.activities ?? res.data ?? []);
+    const pagination: PaginationInfo = res.pagination ?? {
+      page: query?.page ?? 1,
+      limit: query?.limit ?? 20,
+      total: arr.length,
+      total_pages: 1,
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return arr.map((l: any) => normalizeLog(l));
+    return { data: arr.map((l: any) => normalizeLog(l)), pagination };
   },
 };

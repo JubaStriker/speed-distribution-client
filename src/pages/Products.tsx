@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Product, ProductStatus, Category } from '../types';
 import type { PaginationInfo } from '../api';
 import { categoriesApi, productsApi } from '../api';
-import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
 interface ProductForm {
   name: string;
@@ -25,6 +25,7 @@ export default function Products() {
   const [pagination, setPagination] = useState<PaginationInfo>({ page: 1, limit: PAGE_LIMIT, total: 0, total_pages: 1 });
   const [currentPage, setCurrentPage] = useState(1);
   const [version, setVersion] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -45,6 +46,7 @@ export default function Products() {
   }, []);
 
   useEffect(() => {
+    setLoading(true);
     productsApi.list({
       q: search || undefined,
       category_id: filterCategory || undefined,
@@ -53,7 +55,11 @@ export default function Products() {
     }).then(result => {
       setProducts(result.data);
       setPagination(result.pagination);
-    }).catch(console.error);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
   }, [currentPage, search, filterCategory, version]);
 
   function openAdd() {
@@ -170,6 +176,12 @@ export default function Products() {
       </div>
 
       {/* Table */}
+      {loading ? (
+        <div className="bg-white rounded-xl border border-gray-200 py-16 flex flex-col items-center gap-3">
+          <RefreshCw size={28} className="animate-spin text-blue-500" />
+          <p className="text-sm text-gray-400">Loading products…</p>
+        </div>
+      ) : (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -269,6 +281,7 @@ export default function Products() {
           </div>
         )}
       </div>
+      )}
 
       {/* Product Modal */}
       {showModal && (
